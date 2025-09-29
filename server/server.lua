@@ -56,43 +56,51 @@ local function sendToDiscordooca(name, message, srcId, cid)
     }), {["Content-Type"] = "application/json"})
 end
 
-AddEventHandler('chatMessage', function(source, name, message)
-	if string.sub(message,1,string.len("/"))=="/" then
-		-- Do nothing because this is a command
-	else
-		-- Add here what you want to do when user type in chat
-		if Config.EnableChatOOC then
-			local src = source
-			local srcId = tostring(source)
-			-- Get cid from QBCore player (fixes CID: N/A)
-			local Player = (QBCore and QBCore.Functions and QBCore.Functions.GetPlayer) and QBCore.Functions.GetPlayer(src) or nil
-			local cid = (Player and Player.PlayerData and Player.PlayerData.citizenid) and tostring(Player.PlayerData.citizenid) or "N/A"
-			local displayName = getPlayerFullName(src)
-			local Players = GetPlayers()
-			for k, v in pairs(Players) do
-				if Config.EnableGlobalOOC then
-					TriggerClientEvent('chat:addMessage', v, {
-						color = Config.PrefixColor,
-						multiline = true,
-						args = {Config.Prefix .. displayName, message}
-					})
-				elseif v == src then
-					TriggerClientEvent('chat:addMessage', v, {
-						color = Config.PrefixColor,
-						multiline = true,
-						args = {Config.Prefix .. displayName, message}
-					})
-				elseif #(GetEntityCoords(GetPlayerPed(src)) - GetEntityCoords(GetPlayerPed(v))) < Config.ChatDistance then
-					TriggerClientEvent('chat:addMessage', v, {
-						color = Config.PrefixColor,
-						multiline = true,
-						args = {Config.Prefix .. displayName, message}
-					})
-				end
-			end
-			-- Log once to Discord
-			sendToDiscord(displayName, message, srcId, cid)
+-- Helper: send OOC to recipients (global or proximity) and log once
+local function broadcastOOC(src, msg)
+	if not msg or msg == "" then return end
+	local srcId = tostring(src)
+	-- Get cid from QBCore player (fixes CID: N/A)
+	local Player = (QBCore and QBCore.Functions and QBCore.Functions.GetPlayer) and QBCore.Functions.GetPlayer(src) or nil
+	local cid = (Player and Player.PlayerData and Player.PlayerData.citizenid) and tostring(Player.PlayerData.citizenid) or "N/A"
+	local displayName = getPlayerFullName(src)
+	local Players = GetPlayers()
+
+	for _, v in pairs(Players) do
+		if Config.EnableGlobalOOC then
+			TriggerClientEvent('chat:addMessage', v, {
+				color = Config.PrefixColor,
+				multiline = true,
+				args = {Config.Prefix .. displayName, msg}
+			})
+		elseif v == src then
+			TriggerClientEvent('chat:addMessage', v, {
+				color = Config.PrefixColor,
+				multiline = true,
+				args = {Config.Prefix .. displayName, msg}
+			})
+		elseif #(GetEntityCoords(GetPlayerPed(src)) - GetEntityCoords(GetPlayerPed(v))) < (Config.ChatDistance or 20.0) then
+			TriggerClientEvent('chat:addMessage', v, {
+				color = Config.PrefixColor,
+				multiline = true,
+				args = {Config.Prefix .. displayName, msg}
+			})
 		end
+	end
+
+	-- Log once to Discord
+	sendToDiscord(displayName, msg, srcId, cid)
+end
+
+AddEventHandler('chatMessage', function(source, name, message)
+	-- If it's a command, let the chat resource handle ExecuteCommand. Do not cancel.
+	if string.sub(message, 1, 1) == "/" then
+		return
+	end
+
+	-- Normal chat -> convert to OOC if enabled, and prevent default broadcast
+	if Config.EnableChatOOC then
+		broadcastOOC(source, message)
 	end
 	CancelEvent()
 end)
@@ -151,7 +159,23 @@ RegisterCommand('ooca', function(source, args, raw)
 	sendToDiscordooca(realName, msg, tostring(src), cid)
 end, false)
 
+-- Explicit OOC command (/ooc)
+RegisterCommand('ooc', function(source, args, raw)
+	if source == 0 then return end
+	if not Config.EnableChatOOC then return end
 
+	local msg = table.concat(args or {}, " ")
+	if msg == "" then
+		TriggerClientEvent('chat:addMessage', source, {
+			color = {255, 0, 0},
+			multiline = true,
+			args = {"System", "Usage: /ooc <message>"}
+		})
+		return
+	end
+
+	broadcastOOC(source, msg)
+end, false)
 
 Citizen.CreateThread(function() --We are using a citizen create thread that will run only 1 time. 
                                 --If RollDice.UseCommand is enabled then it will create the command and a sugggestion box for it.
