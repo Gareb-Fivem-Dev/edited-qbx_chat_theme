@@ -1,5 +1,5 @@
 # qbx_chat_theme 
-QBox Core may work on Qb-core
+qbox_core may work on qb-core some editing may need done
 > Note: This is an edited version of the original qbx_chat_theme resource.
 
 <img src="https://files.fivemerr.com/images/cf1f399e-14af-45de-8701-220408f384a3.png">
