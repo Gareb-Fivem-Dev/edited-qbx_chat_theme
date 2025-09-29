@@ -45,7 +45,7 @@ Config.StaffGroups = {
 Config.LogToDiscord = true    -- true = log staff chat to Discord webhook
 
 -- Discord webhook for staff chat logging
-Config.DiscordWebhook = "https://discord.com/api/webhooks/1422301552374186076/YboWPp1KiRMo7i-mJi-BLOFskiHXs7EZixZT3k1kxRbsde_p7IK9j1Glf35M5nOEd6jB"
+Config.DiscordWebhook = "Change ME"
 
 -- Discord embed color (decimal, not hex)
 Config.DiscordColor = 16711935 -- purple
